@@ -4,7 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const { Client: PgClient } = require('pg');
 const QRCode = require('qrcode');
 
@@ -270,7 +270,7 @@ client.on('message', async msg => {
             
             const contact = await msg.getContact();
             const newProperty = {
-                id: uuidv4(),
+                id: crypto.randomUUID(),
                 title: session.data.title,
                 price: session.data.price,
                 location: session.data.location,
@@ -309,7 +309,7 @@ client.on('message', async msg => {
                     if (ext.includes(';')) ext = ext.split(';')[0];
                     if (ext === 'jpeg') ext = 'jpg';
                     
-                    const filename = `${uuidv4()}.${ext}`;
+                    const filename = `${crypto.randomUUID()}.${ext}`;
                     const filePath = path.join(uploadsDir, filename);
                     fs.writeFileSync(filePath, media.data, 'base64');
                     // We will need the server URL to point to the live bot-backend later if it is hosted on a VPS. For now localhost is fine since the Vercel frontend needs an absolute URL to fetch the image. 
