@@ -227,10 +227,10 @@ const AdminDashboard = () => {
                 <div style={{ display: 'flex', gap: '1rem', maxWidth: '400px', margin: '0 auto', marginBottom: '2rem' }}>
                   <input
                     type="text"
-                    placeholder="+919876543210"
+                    placeholder="Type number here (e.g. +91...)"
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
-                    style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db', background: 'white', color: '#111827', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)' }}
+                    style={{ flex: 1, padding: '1rem', borderRadius: '8px', border: '3px solid #000', background: '#e5e7eb', color: '#000', fontSize: '1.1rem', fontWeight: 'bold', minWidth: '250px' }}
                   />
                   <button className="btn btn-primary" onClick={requestPairingCode} disabled={requestingCode}>
                     {requestingCode ? 'Requesting...' : 'Get Code'}
