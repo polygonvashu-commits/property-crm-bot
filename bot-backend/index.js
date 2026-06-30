@@ -32,8 +32,10 @@ app.use('/uploads', express.static(uploadsDir));
 // Ensure the local auth is properly set up
 const client = new Client({
     authStrategy: new LocalAuth(),
+    authTimeoutMs: 120000,
     puppeteer: {
         headless: true,
+        timeout: 120000,
         executablePath: process.env.NODE_ENV === 'production' ? '/usr/bin/google-chrome' : null,
         args: [
             '--no-sandbox',
@@ -42,7 +44,8 @@ const client = new Client({
             '--disable-accelerated-2d-canvas',
             '--no-first-run',
             '--no-zygote',
-            '--disable-gpu'
+            '--disable-gpu',
+            '--single-process'
         ]
     }
 });
