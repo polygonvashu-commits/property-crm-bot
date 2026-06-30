@@ -6,7 +6,6 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { Client: PgClient } = require('pg');
-const QRCode = require('qrcode');
 
 const app = express();
 app.use(cors());
@@ -76,28 +75,17 @@ const client = new Client({
     }
 });
 
-let latestQR = null;
 let isReady = false;
 
-client.on('qr', async (qr) => {
+client.on('qr', (qr) => {
     isReady = false;
-    console.log('\n======================================================');
-    console.log('AGENT LOGIN REQUIRED: Check /qr endpoint in browser');
-    console.log('======================================================\n');
-    qrcode.generate(qr, { small: true });
-    
-    try {
-        latestQR = await QRCode.toDataURL(qr);
-    } catch (err) {
-        console.error('Failed to generate QR data URL', err);
-    }
+    console.log('\n[WhatsApp] Waiting for pairing code connection...');
 });
 
 // Session management for conversational flow
 const userSessions = {};
 
 client.on('ready', () => {
-    latestQR = null; // Clear QR code when authenticated
     isReady = true;
     console.log('\n✅ WhatsApp Bot is Ready and Connected to CockroachDB!');
 });
@@ -370,30 +358,6 @@ client.initialize();
 
 // --- REST API for Frontend Preview & Login ---
 
-app.get('/qr', (req, res) => {
-    if (!latestQR) {
-        return res.send(`
-            <html>
-                <body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
-                    <h2>Bot is already authenticated!</h2>
-                    <p>No login required.</p>
-                </body>
-            </html>
-        `);
-    }
-    res.send(`
-        <html>
-            <body style="font-family: sans-serif; text-align: center; padding-top: 50px; background-color: #f3f4f6;">
-                <h2>Scan QR Code to Login to WhatsApp Bot</h2>
-                <div style="background: white; padding: 20px; display: inline-block; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                    <img src="${latestQR}" alt="QR Code" style="width: 300px; height: 300px;" />
-                </div>
-                <p style="margin-top: 20px; color: #6b7280;">Reload the page if the QR code expires.</p>
-            </body>
-        </html>
-    `);
-});
-
 app.get('/api/property/:id', async (req, res) => {
     try {
         const propRes = await pgClient.query('SELECT * FROM properties WHERE id = $1', [req.params.id]);
@@ -467,7 +431,25 @@ app.post('/api/admin/login', (req, res) => {
 });
 
 app.get('/api/admin/status', authMiddleware, (req, res) => {
-    res.json({ ready: isReady, qr: latestQR });
+    res.json({ ready: isReady });
+});
+
+app.post('/api/admin/pairing-code', authMiddleware, async (req, res) => {
+    try {
+        const { phoneNumber } = req.body;
+        if (!phoneNumber) {
+            return res.status(400).json({ error: 'Phone number is required' });
+        }
+        
+        // requestPairingCode requires the phone number without '+' or specific formatting
+        const cleanNumber = phoneNumber.replace(/[^0-9]/g, '');
+        const pairingCode = await client.requestPairingCode(cleanNumber);
+        
+        res.json({ code: pairingCode });
+    } catch (err) {
+        console.error('Error requesting pairing code:', err);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.get('/api/admin/users', authMiddleware, async (req, res) => {
