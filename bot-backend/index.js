@@ -82,12 +82,28 @@ client.on('qr', (qr) => {
     console.log('\n[WhatsApp] Waiting for pairing code connection...');
 });
 
+client.on('authenticated', () => {
+    console.log('\n✅ WhatsApp Authenticated successfully!');
+    // Even if it hasn't fully synced ('ready'), it is authenticated.
+    isReady = true;
+});
+
+client.on('auth_failure', (msg) => {
+    console.error('\n❌ Authentication failure', msg);
+    isReady = false;
+});
+
+client.on('disconnected', (reason) => {
+    console.log('\n❌ WhatsApp Disconnected!', reason);
+    isReady = false;
+});
+
 // Session management for conversational flow
 const userSessions = {};
 
 client.on('ready', () => {
     isReady = true;
-    console.log('\n✅ WhatsApp Bot is Ready and Connected to CockroachDB!');
+    console.log('\n✅ WhatsApp Bot is FULLY Ready and Synced!');
 });
 
 client.on('disconnected', () => {
