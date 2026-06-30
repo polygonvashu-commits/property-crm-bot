@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { Client: PgClient } = require('pg');
+const QRCode = require('qrcode');
 
 const app = express();
 app.use(cors());
@@ -17,6 +18,9 @@ const pgClient = new PgClient({
     connectionString: "postgresql://vashu:p--idOQQkxIUPudLXwZ9TQ@copper-orca-28396.j77.aws-ap-south-1.cockroachlabs.cloud:26257/defaultdb?sslmode=verify-full"
 });
 pgClient.connect().catch(err => console.error("DB Connection Error:", err));
+pgClient.on('error', err => {
+    console.error('Unexpected error on idle client', err);
+});
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -29,21 +33,40 @@ app.use('/uploads', express.static(uploadsDir));
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
-        args: ['--no-sandbox']
+        headless: true,
+        executablePath: process.env.NODE_ENV === 'production' ? '/usr/bin/google-chrome' : null,
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--disable-gpu'
+        ]
     }
 });
 
-client.on('qr', (qr) => {
+let latestQR = null;
+
+client.on('qr', async (qr) => {
     console.log('\n======================================================');
-    console.log('AGENT LOGIN REQUIRED: Scan the QR code below in WhatsApp');
+    console.log('AGENT LOGIN REQUIRED: Check /qr endpoint in browser');
     console.log('======================================================\n');
     qrcode.generate(qr, { small: true });
+    
+    try {
+        latestQR = await QRCode.toDataURL(qr);
+    } catch (err) {
+        console.error('Failed to generate QR data URL', err);
+    }
 });
 
 // Session management for conversational flow
 const userSessions = {};
 
 client.on('ready', () => {
+    latestQR = null; // Clear QR code when authenticated
     console.log('\n✅ WhatsApp Bot is Ready and Connected to CockroachDB!');
 });
 
@@ -309,7 +332,32 @@ client.on('message', async msg => {
 
 client.initialize();
 
-// --- REST API for Frontend Preview ---
+// --- REST API for Frontend Preview & Login ---
+
+app.get('/qr', (req, res) => {
+    if (!latestQR) {
+        return res.send(`
+            <html>
+                <body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
+                    <h2>Bot is already authenticated!</h2>
+                    <p>No login required.</p>
+                </body>
+            </html>
+        `);
+    }
+    res.send(`
+        <html>
+            <body style="font-family: sans-serif; text-align: center; padding-top: 50px; background-color: #f3f4f6;">
+                <h2>Scan QR Code to Login to WhatsApp Bot</h2>
+                <div style="background: white; padding: 20px; display: inline-block; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <img src="${latestQR}" alt="QR Code" style="width: 300px; height: 300px;" />
+                </div>
+                <p style="margin-top: 20px; color: #6b7280;">Reload the page if the QR code expires.</p>
+            </body>
+        </html>
+    `);
+});
+
 app.get('/api/property/:id', async (req, res) => {
     try {
         const propRes = await pgClient.query('SELECT * FROM properties WHERE id = $1', [req.params.id]);
