@@ -31,7 +31,7 @@ const AdminDashboard = () => {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch(`${apiUrl}/api/admin/users`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${apiUrl}/api/admin/users`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
       if (res.status === 401) { navigate('/admin/login'); return; }
       const data = await res.json();
       setUsers(data);
@@ -40,7 +40,7 @@ const AdminDashboard = () => {
 
   const fetchProperties = async () => {
     try {
-      const res = await fetch(`${apiUrl}/api/admin/properties`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${apiUrl}/api/admin/properties`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
       const data = await res.json();
       setProperties(data);
     } catch (e) { console.error('Failed to fetch properties', e); }
@@ -48,7 +48,7 @@ const AdminDashboard = () => {
 
   const fetchBotStatus = async () => {
     try {
-      const res = await fetch(`${apiUrl}/api/admin/status`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${apiUrl}/api/admin/status`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
       const data = await res.json();
       setBotStatus(data);
     } catch (e) { console.error('Failed to fetch bot status', e); }
