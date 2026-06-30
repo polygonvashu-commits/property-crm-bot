@@ -219,9 +219,9 @@ const AdminDashboard = () => {
                 <p style={{ color: '#a7f3d0' }}>The WhatsApp bot is actively receiving and processing messages.</p>
               </div>
             ) : (
-              <div style={{ padding: '2rem', background: 'rgba(255,255,255,0.05)', borderRadius: '12px' }}>
+              <div style={{ padding: '2rem', background: '#f9fafb', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
                 <h3 style={{ marginBottom: '1rem' }}>Connect using Phone Number</h3>
-                <p style={{ marginBottom: '1.5rem', color: '#d1d5db' }}>
+                <p style={{ marginBottom: '1.5rem', color: '#4b5563' }}>
                   Enter the phone number of the device you want the bot to run on (include country code, e.g., +91).
                 </p>
                 <div style={{ display: 'flex', gap: '1rem', maxWidth: '400px', margin: '0 auto', marginBottom: '2rem' }}>
@@ -230,7 +230,7 @@ const AdminDashboard = () => {
                     placeholder="+919876543210"
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
-                    style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: 'white' }}
+                    style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db', background: 'white', color: '#111827', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)' }}
                   />
                   <button className="btn btn-primary" onClick={requestPairingCode} disabled={requestingCode}>
                     {requestingCode ? 'Requesting...' : 'Get Code'}
