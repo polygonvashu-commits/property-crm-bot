@@ -48,8 +48,10 @@ const client = new Client({
 });
 
 let latestQR = null;
+let isReady = false;
 
 client.on('qr', async (qr) => {
+    isReady = false;
     console.log('\n======================================================');
     console.log('AGENT LOGIN REQUIRED: Check /qr endpoint in browser');
     console.log('======================================================\n');
@@ -67,7 +69,12 @@ const userSessions = {};
 
 client.on('ready', () => {
     latestQR = null; // Clear QR code when authenticated
+    isReady = true;
     console.log('\n✅ WhatsApp Bot is Ready and Connected to CockroachDB!');
+});
+
+client.on('disconnected', () => {
+    isReady = false;
 });
 
 client.on('message', async msg => {
@@ -403,6 +410,76 @@ app.post('/api/offer/:id', async (req, res) => {
     } catch (err) {
         console.error('Error sending message to agent:', err);
         res.status(500).json({ error: 'Failed to notify the agent' });
+    }
+});
+
+// --- ADMIN API ---
+
+const ADMIN_USER = process.env.ADMIN_USER || 'vashuadmin';
+const ADMIN_PASS = process.env.ADMIN_PASS || 'vashu247@#!.';
+const ADMIN_TOKEN = 'secret-admin-token-12345';
+
+const authMiddleware = (req, res, next) => {
+    const token = req.headers.authorization;
+    if (token === `Bearer ${ADMIN_TOKEN}`) {
+        next();
+    } else {
+        res.status(401).json({ error: 'Unauthorized' });
+    }
+};
+
+app.post('/api/admin/login', (req, res) => {
+    const { username, password } = req.body;
+    if (username === ADMIN_USER && password === ADMIN_PASS) {
+        res.json({ token: ADMIN_TOKEN });
+    } else {
+        res.status(401).json({ error: 'Invalid credentials' });
+    }
+});
+
+app.get('/api/admin/status', authMiddleware, (req, res) => {
+    res.json({ ready: isReady, qr: latestQR });
+});
+
+app.get('/api/admin/users', authMiddleware, async (req, res) => {
+    try {
+        const result = await pgClient.query('SELECT * FROM users ORDER BY id ASC');
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.put('/api/admin/users/:id/status', authMiddleware, async (req, res) => {
+    try {
+        const newStatus = req.body.status;
+        const targetId = req.params.id;
+        await pgClient.query('UPDATE users SET status = $1 WHERE id = $2', [newStatus, targetId]);
+        
+        if (newStatus === 'approved') {
+            client.sendMessage(targetId, '🎉 *Good news!* Your account has been approved by the Admin. Send "hi" to see the main menu.').catch(() => {});
+        }
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/admin/properties', authMiddleware, async (req, res) => {
+    try {
+        const result = await pgClient.query('SELECT * FROM properties ORDER BY title ASC');
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/admin/properties/:id', authMiddleware, async (req, res) => {
+    try {
+        await pgClient.query('DELETE FROM properties WHERE id = $1', [req.params.id]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 

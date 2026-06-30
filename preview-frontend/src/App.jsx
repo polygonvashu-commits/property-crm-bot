@@ -1,6 +1,8 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import PropertyPreview from './components/PropertyPreview';
+import AdminLogin from './components/AdminLogin';
+import AdminDashboard from './components/AdminDashboard';
 
 function App() {
   return (
@@ -18,6 +20,8 @@ function App() {
           </div>
         } />
         <Route path="/preview/:id" element={<PropertyPreview />} />
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="*" element={<div className="container" style={{textAlign: 'center', marginTop: '20vh'}}><h2>404 - Not Found</h2></div>} />
       </Routes>
     </Router>
