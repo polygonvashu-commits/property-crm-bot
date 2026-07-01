@@ -185,25 +185,27 @@ async function connectToWhatsApp() {
             }
 
             if (session.state === 'AWAITING_APPROVE') {
-                const targetId = text + '@s.whatsapp.net';
-                const targetRes = await pgClient.query('SELECT * FROM users WHERE id = $1', [targetId]);
+                const targetIdPrefix = text.trim();
+                const targetRes = await pgClient.query('SELECT * FROM users WHERE id LIKE $1', [`${targetIdPrefix}@%`]);
                 session.state = 'IDLE';
                 if (targetRes.rows.length > 0) {
-                    await pgClient.query('UPDATE users SET status = $1 WHERE id = $2', ['approved', targetId]);
-                    sock.sendMessage(targetId, { text: '🎉 *Good news!* Your account has been approved by the Admin. Send "hi" to see the main menu.' }).catch(() => {});
-                    return reply(`✅ User ${text} has been APPROVED.`);
+                    const actualTargetId = targetRes.rows[0].id;
+                    await pgClient.query('UPDATE users SET status = $1 WHERE id = $2', ['approved', actualTargetId]);
+                    sock.sendMessage(actualTargetId, { text: '🎉 *Good news!* Your account has been approved by the Admin. Send "hi" to see the main menu.' }).catch(() => {});
+                    return reply(`✅ User ${actualTargetId.split('@')[0]} has been APPROVED.`);
                 } else {
                     return reply(`❌ User ${text} not found. Try again from the menu.`);
                 }
             }
 
             if (session.state === 'AWAITING_BLOCK') {
-                const targetId = text + '@s.whatsapp.net';
-                const targetRes = await pgClient.query('SELECT * FROM users WHERE id = $1', [targetId]);
+                const targetIdPrefix = text.trim();
+                const targetRes = await pgClient.query('SELECT * FROM users WHERE id LIKE $1', [`${targetIdPrefix}@%`]);
                 session.state = 'IDLE';
                 if (targetRes.rows.length > 0) {
-                    await pgClient.query('UPDATE users SET status = $1 WHERE id = $2', ['blocked', targetId]);
-                    return reply(`🚫 User ${text} has been BLOCKED.`);
+                    const actualTargetId = targetRes.rows[0].id;
+                    await pgClient.query('UPDATE users SET status = $1 WHERE id = $2', ['blocked', actualTargetId]);
+                    return reply(`🚫 User ${actualTargetId.split('@')[0]} has been BLOCKED.`);
                 } else {
                     return reply(`❌ User ${text} not found. Try again from the menu.`);
                 }
