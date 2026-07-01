@@ -33,6 +33,7 @@ app.use('/uploads', express.static(uploadsDir));
 const client = new Client({
     authStrategy: new LocalAuth(),
     authTimeoutMs: 120000,
+    webVersionCache: { type: 'none' },
     puppeteer: {
         headless: true,
         timeout: 120000,
