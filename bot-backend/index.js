@@ -22,6 +22,15 @@ pgClient.on('error', err => {
     console.error('Unexpected error on idle client', err);
 });
 
+// Auto-create services table
+pgClient.query(`
+    CREATE TABLE IF NOT EXISTS services (
+        id UUID PRIMARY KEY,
+        title TEXT,
+        description TEXT
+    )
+`).catch(err => console.error("Error creating services table:", err));
+
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
@@ -156,6 +165,23 @@ async function connectToWhatsApp() {
                     session.state = 'AWAITING_DELETE';
                     return reply('🗑️ *Delete Listing*\n\nPlease reply with the Property ID you want to delete:');
                 }
+                if (text === '8') {
+                    session.state = 'AWAITING_SERVICE_TITLE';
+                    return reply('🛠️ *Add New Service*\n\nPlease provide the Title of the service (e.g. Property Management):');
+                }
+                if (text === '9') {
+                    session.state = 'AWAITING_SERVICE_DELETE';
+                    return reply('🗑️ *Delete Service*\n\nPlease reply with the exact Service Title you want to delete:');
+                }
+                if (text === '10') {
+                    const servRes = await pgClient.query('SELECT * FROM services');
+                    if (servRes.rows.length === 0) return reply('No services found.');
+                    let list = '*Current Services:*\n\n';
+                    servRes.rows.forEach(s => {
+                        list += `🔹 *${s.title}*\n${s.description}\n\n`;
+                    });
+                    return reply(list);
+                }
             }
 
             if (session.state === 'AWAITING_APPROVE') {
@@ -194,6 +220,29 @@ async function connectToWhatsApp() {
                     return reply(`❌ Property ${targetId} not found. Try again from the menu.`);
                 }
             }
+
+            if (session.state === 'AWAITING_SERVICE_TITLE') {
+                session.data.serviceTitle = text;
+                session.state = 'AWAITING_SERVICE_DESC';
+                return reply(`✅ Service Title set to: *${text}*\n\nNow provide a short description for this service:`);
+            }
+            if (session.state === 'AWAITING_SERVICE_DESC') {
+                const newId = crypto.randomUUID();
+                await pgClient.query('INSERT INTO services (id, title, description) VALUES ($1, $2, $3)', [newId, session.data.serviceTitle, text]);
+                session.state = 'IDLE';
+                session.data = {};
+                return reply(`✅ Service *${session.data.serviceTitle}* has been successfully added to the database!`);
+            }
+            if (session.state === 'AWAITING_SERVICE_DELETE') {
+                const targetTitle = text.trim();
+                const res = await pgClient.query('DELETE FROM services WHERE title = $1 RETURNING id', [targetTitle]);
+                session.state = 'IDLE';
+                if (res.rowCount > 0) {
+                    return reply(`✅ Service "${targetTitle}" deleted.`);
+                } else {
+                    return reply(`❌ Service "${targetTitle}" not found. Try again from the menu.`);
+                }
+            }
         }
 
         // Initialize session if not exists
@@ -207,7 +256,7 @@ async function connectToWhatsApp() {
             session.state = 'IDLE';
             session.data = {};
             if (user.status !== 'approved') {
-                return reply('❌ Action cancelled.\n\n⏳ *Welcome to Property CRM!*\nYour agent access is pending.\n\n1️⃣ View Other Services\n2️⃣ Contact Owner');
+                return reply('❌ Action cancelled.\n\n⏳ *Welcome to Property CRM!*\nYour agent access is pending.\n\n1️⃣ View Other Services\n2️⃣ Browse Properties\n3️⃣ Contact Owner');
             }
             return reply('❌ Action cancelled. Send any message to see the main menu.');
         }
@@ -220,12 +269,32 @@ async function connectToWhatsApp() {
             
             if (session.state === 'IDLE') {
                 if (text === '1') {
-                    return reply('🏢 *Our Other Services*\n\n🔹 Real Estate Consulting\n🔹 Legal & Documentation\n🔹 Property Management\n🔹 Home Loans & Financing\n\n_(Reply 0 to go back)_');
+                    const servRes = await pgClient.query('SELECT * FROM services');
+                    if (servRes.rows.length === 0) {
+                        return reply('There are no other services listed at the moment.\n\n_(Reply 0 to go back)_');
+                    }
+                    let servList = '🏢 *Our Other Services*\n\n';
+                    servRes.rows.forEach(s => {
+                        servList += `🔹 *${s.title}*\n${s.description}\n\n`;
+                    });
+                    servList += '_(Reply 0 to go back)_';
+                    return reply(servList);
                 } else if (text === '2') {
+                    const props = await pgClient.query('SELECT * FROM properties');
+                    if (props.rows.length === 0) {
+                        return reply('No properties listed on the platform yet.\n\n_(Reply 0 to go back)_');
+                    }
+                    let listStr = '*AVAILABLE PROPERTIES:*\n\n';
+                    props.rows.forEach(p => {
+                        listStr += `🔹 *${p.title}* (${p.price})\nLocation: ${p.location}\nLink: http://localhost:5173/preview/${p.id}\n\n`;
+                    });
+                    listStr += '_(Reply 0 to go back)_';
+                    return reply(listStr);
+                } else if (text === '3') {
                     session.state = 'AWAITING_CONTACT_MESSAGE';
                     return reply('📝 Please type your message for the owner. It will be forwarded directly to them.\n\n_(Reply 0 to cancel)_');
                 } else {
-                    return reply('⏳ *Welcome to Property CRM!*\nYour agent access is pending Admin approval.\n\nIn the meantime, you can:\n1️⃣ View Other Services\n2️⃣ Contact Owner');
+                    return reply('⏳ *Welcome to Property CRM!*\nYour agent access is pending Admin approval.\n\nIn the meantime, you can:\n1️⃣ View Other Services\n2️⃣ Browse Properties\n3️⃣ Contact Owner');
                 }
             }
             
@@ -258,7 +327,7 @@ async function connectToWhatsApp() {
                 // Main Menu
                 let menu = `👋 *Property CRM Bot*\n\nPlease reply with a number to choose an option:\n\n1️⃣ Add Property\n2️⃣ List My Properties\n`;
                 if (user.role === 'admin') {
-                    menu = `👑 *Admin Dashboard*\n\nPlease reply with a number:\n\n1️⃣ Add Property\n2️⃣ List My Properties\n3️⃣ View All Users\n4️⃣ Approve User\n5️⃣ Block User\n6️⃣ View All Listings\n7️⃣ Delete Listing\n`;
+                    menu = `👑 *Admin Dashboard*\n\nPlease reply with a number:\n\n1️⃣ Add Property\n2️⃣ List My Properties\n3️⃣ View All Users\n4️⃣ Approve User\n5️⃣ Block User\n6️⃣ View All Listings\n7️⃣ Delete Listing\n8️⃣ Add Service\n9️⃣ Delete Service\n10 View All Services\n`;
                 }
                 menu += `\n_(Reply '0' or 'cancel' at any time to abort)_`;
                 return reply(menu);
