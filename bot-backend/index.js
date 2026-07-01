@@ -156,8 +156,9 @@ async function connectToWhatsApp() {
                         return reply('No properties listed on the platform yet.');
                     }
                     let listStr = '*ALL PLATFORM PROPERTIES:*\n\n';
+                    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
                     props.rows.forEach(p => {
-                        listStr += `🔹 *${p.title}* (${p.price})\nAgent: ${p.agent_name} (${p.agent_phone})\nID: ${p.id}\nLink: http://localhost:5173/preview/${p.id}\n\n`;
+                        listStr += `🔹 *${p.title}* (${p.price})\nAgent: ${p.agent_name} (${p.agent_phone})\nID: ${p.id}\nLink: ${frontendUrl}/preview/${p.id}\n\n`;
                     });
                     return reply(listStr);
                 }
@@ -287,8 +288,9 @@ async function connectToWhatsApp() {
                         return reply('No properties listed on the platform yet.\n\n_(Reply 0 to go back)_');
                     }
                     let listStr = '*AVAILABLE PROPERTIES:*\n\n';
+                    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
                     props.rows.forEach(p => {
-                        listStr += `🔹 *${p.title}* (${p.price})\nLocation: ${p.location}\nLink: http://localhost:5173/preview/${p.id}\n\n`;
+                        listStr += `🔹 *${p.title}* (${p.price})\nLocation: ${p.location}\nLink: ${frontendUrl}/preview/${p.id}\n\n`;
                     });
                     listStr += '_(Reply 0 to go back)_';
                     return reply(listStr);
@@ -321,18 +323,36 @@ async function connectToWhatsApp() {
                     return reply('You have no properties listed yet.');
                 }
                 let listStr = '*Your Properties:*\n\n';
+                const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
                 myPropsRes.rows.forEach(p => {
-                    listStr += `🔹 *${p.title}* (${p.price})\nLink: http://localhost:5173/preview/${p.id}\n\n`;
+                    listStr += `🔹 *${p.title}* (${p.price})\nID: ${p.id}\nLink: ${frontendUrl}/preview/${p.id}\n\n`;
                 });
                 return reply(listStr);
-            } else if (!['3', '4', '5', '6', '7'].includes(text) || user.role !== 'admin') {
+            } else if (text === '3' && user.role !== 'admin') {
+                session.state = 'AWAITING_DELETE_MY_PROPERTY';
+                return reply('🗑️ *Delete My Property*\n\nReply with the *ID* of the property you want to delete:');
+            } else if (text === '11' && user.role === 'admin') {
+                session.state = 'AWAITING_DELETE_MY_PROPERTY';
+                return reply('🗑️ *Delete My Property*\n\nReply with the *ID* of the property you want to delete:');
+            } else if (!['3', '4', '5', '6', '7', '8', '9', '10'].includes(text) || user.role !== 'admin') {
                 // Main Menu
-                let menu = `👋 *Property CRM Bot*\n\nPlease reply with a number to choose an option:\n\n1️⃣ Add Property\n2️⃣ List My Properties\n`;
+                let menu = `👋 *Property CRM Bot*\n\nPlease reply with a number to choose an option:\n\n1️⃣ Add Property\n2️⃣ List My Properties\n3️⃣ Delete My Property\n`;
                 if (user.role === 'admin') {
-                    menu = `👑 *Admin Dashboard*\n\nPlease reply with a number:\n\n1️⃣ Add Property\n2️⃣ List My Properties\n3️⃣ View All Users\n4️⃣ Approve User\n5️⃣ Block User\n6️⃣ View All Listings\n7️⃣ Delete Listing\n8️⃣ Add Service\n9️⃣ Delete Service\n10 View All Services\n`;
+                    menu = `👑 *Admin Dashboard*\n\nPlease reply with a number:\n\n1️⃣ Add Property\n2️⃣ List My Properties\n3️⃣ View All Users\n4️⃣ Approve User\n5️⃣ Block User\n6️⃣ View All Listings\n7️⃣ Delete Listing\n8️⃣ Add Service\n9️⃣ Delete Service\n🔟 View All Services\n1️⃣1️⃣ Delete My Property\n`;
                 }
                 menu += `\n_(Reply '0' or 'cancel' at any time to abort)_`;
                 return reply(menu);
+            }
+        }
+        
+        if (session.state === 'AWAITING_DELETE_MY_PROPERTY') {
+            const targetId = text.trim();
+            const res = await pgClient.query('DELETE FROM properties WHERE id = $1 AND agent_id = $2 RETURNING *', [targetId, userId]);
+            session.state = 'IDLE';
+            if (res.rowCount > 0) {
+                return reply(`✅ Successfully deleted your property: ${res.rows[0].title}`);
+            } else {
+                return reply(`❌ Property not found or you don't have permission to delete it.`);
             }
         }
 
@@ -393,12 +413,13 @@ async function connectToWhatsApp() {
                     newProperty.agentId, newProperty.agentName, newProperty.agentPhone
                 ]);
 
-                const previewUrl = `http://localhost:5173/preview/${newProperty.id}`;
-
+                const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+                const previewUrl = `${frontendUrl}/preview/${newProperty.id}`;
+                
                 session.state = 'IDLE';
                 session.data = {};
-
-                return reply(`🎉 *Property Added Successfully!*\n\nHere is your custom preview link to share with clients:\n${previewUrl}`);
+                
+                return reply(`🎉 *Property Successfully Added!*\n\n*${newProperty.title}*\nPrice: ${newProperty.price}\nLocation: ${newProperty.location}\n\n🔗 *Preview Link:*\n${previewUrl}`);
             }
 
             const isMedia = !!(msg.message.imageMessage || msg.message.documentMessage || msg.message.videoMessage);
