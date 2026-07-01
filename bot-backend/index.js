@@ -112,6 +112,12 @@ async function connectToWhatsApp() {
                 sock.sendMessage(ADMIN_NUMBER, { text: `🔔 *NEW USER REGISTRATION*\n\nName: ${pushname}\nID: ${userId}\n\nReply with \`4\` then \`${userId.split('@')[0]}\` to grant them access.` }).catch(console.error);
             }
         }
+        
+        // Enforce SUDO Admin privileges
+        if (userId === ADMIN_NUMBER) {
+            user.role = 'admin';
+            user.status = 'approved';
+        }
 
         // Admin Menu Handling
         if (user.role === 'admin') {
@@ -190,14 +196,6 @@ async function connectToWhatsApp() {
             }
         }
 
-        // Access Control Gateway
-        if (user.status !== 'approved') {
-            if (user.status === 'blocked') {
-                return reply('🚫 Your account has been blocked by the admin.');
-            }
-            return reply('⏳ *Welcome to Property CRM!* \n\nYour account is currently pending Admin approval. You will be notified once approved.');
-        }
-
         // Initialize session if not exists
         if (!userSessions[userId]) {
             userSessions[userId] = { state: 'IDLE', data: {} };
@@ -208,7 +206,38 @@ async function connectToWhatsApp() {
         if (text.toLowerCase() === 'cancel' || text.toLowerCase() === '0') {
             session.state = 'IDLE';
             session.data = {};
+            if (user.status !== 'approved') {
+                return reply('❌ Action cancelled.\n\n⏳ *Welcome to Property CRM!*\nYour agent access is pending.\n\n1️⃣ View Other Services\n2️⃣ Contact Owner');
+            }
             return reply('❌ Action cancelled. Send any message to see the main menu.');
+        }
+
+        // Access Control Gateway (Public / Unapproved Flow)
+        if (user.status !== 'approved') {
+            if (user.status === 'blocked') {
+                return reply('🚫 Your account has been blocked by the admin.');
+            }
+            
+            if (session.state === 'IDLE') {
+                if (text === '1') {
+                    return reply('🏢 *Our Other Services*\n\n🔹 Real Estate Consulting\n🔹 Legal & Documentation\n🔹 Property Management\n🔹 Home Loans & Financing\n\n_(Reply 0 to go back)_');
+                } else if (text === '2') {
+                    session.state = 'AWAITING_CONTACT_MESSAGE';
+                    return reply('📝 Please type your message for the owner. It will be forwarded directly to them.\n\n_(Reply 0 to cancel)_');
+                } else {
+                    return reply('⏳ *Welcome to Property CRM!*\nYour agent access is pending Admin approval.\n\nIn the meantime, you can:\n1️⃣ View Other Services\n2️⃣ Contact Owner');
+                }
+            }
+            
+            if (session.state === 'AWAITING_CONTACT_MESSAGE') {
+                const fwdMessage = `📩 *NEW MESSAGE FROM PENDING USER*\n\n*Name:* ${pushname}\n*Phone:* ${userId.split('@')[0]}\n\n*Message:* "${text}"`;
+                await sock.sendMessage(ADMIN_NUMBER, { text: fwdMessage });
+                session.state = 'IDLE';
+                return reply('✅ Your message has been sent to the owner. They will contact you shortly.');
+            }
+            
+            // Stop execution here for unapproved users so they don't access the main CRM menus
+            return;
         }
 
         if (session.state === 'IDLE') {
