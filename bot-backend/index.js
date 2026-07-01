@@ -435,7 +435,7 @@ async function connectToWhatsApp() {
                     const filename = `${crypto.randomUUID()}.${ext}`;
                     const filePath = path.join(uploadsDir, filename);
                     fs.writeFileSync(filePath, buffer);
-                    const fileUrl = `http://localhost:3001/uploads/${filename}`;
+                    const fileUrl = `/uploads/${filename}`;
 
                     if (mimeType.startsWith('image/')) {
                         session.data.images.push(fileUrl);
@@ -466,6 +466,14 @@ app.get('/api/property/:id', async (req, res) => {
         const propRes = await pgClient.query('SELECT * FROM properties WHERE id = $1', [req.params.id]);
         if (propRes.rows.length > 0) {
             const p = propRes.rows[0];
+            const hostUrl = `${req.protocol}://${req.get('host')}`;
+            
+            // Map relative or legacy localhost URLs to the live backend URL
+            const fixedImages = (p.images || []).map(url => {
+                if (url.startsWith('/uploads')) return `${hostUrl}${url}`;
+                return url.replace('http://localhost:3001', hostUrl);
+            });
+            
             res.json({
                 id: p.id,
                 title: p.title,
@@ -473,7 +481,7 @@ app.get('/api/property/:id', async (req, res) => {
                 location: p.location,
                 description: p.description,
                 otherInfo: p.other_info,
-                images: p.images,
+                images: fixedImages,
                 documents: p.documents,
                 agentId: p.agent_id,
                 agentName: p.agent_name,
@@ -589,7 +597,17 @@ app.put('/api/admin/users/:id/status', authMiddleware, async (req, res) => {
 app.get('/api/admin/properties', authMiddleware, async (req, res) => {
     try {
         const result = await pgClient.query('SELECT * FROM properties ORDER BY title ASC');
-        res.json(result.rows);
+        const hostUrl = `${req.protocol}://${req.get('host')}`;
+        
+        const props = result.rows.map(p => {
+            const fixedImages = (p.images || []).map(url => {
+                if (url.startsWith('/uploads')) return `${hostUrl}${url}`;
+                return url.replace('http://localhost:3001', hostUrl);
+            });
+            return { ...p, images: fixedImages };
+        });
+        
+        res.json(props);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
