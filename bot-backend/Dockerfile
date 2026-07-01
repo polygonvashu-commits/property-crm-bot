@@ -3,11 +3,11 @@ FROM node:18
 # Set working directory
 WORKDIR /usr/src/app
 
-# Copy package files
-COPY package*.json ./
+# Copy only package.json first to avoid copying package-lock.json
+COPY package.json ./
 
-# Install dependencies (removing lockfile to avoid Windows/Linux conflicts, and ignoring strict peer deps)
-RUN rm -f package-lock.json && npm install --legacy-peer-deps
+# Install dependencies using yarn instead of npm
+RUN yarn install
 
 # Set environment
 ENV NODE_ENV=production
