@@ -76,9 +76,11 @@ const client = new Client({
 });
 
 let isReady = false;
+let isBrowserReadyForPairing = false;
 
 client.on('qr', (qr) => {
     isReady = false;
+    isBrowserReadyForPairing = true;
     console.log('\n[WhatsApp] Waiting for pairing code connection...');
 });
 
@@ -455,6 +457,10 @@ app.post('/api/admin/pairing-code', authMiddleware, async (req, res) => {
         const { phoneNumber } = req.body;
         if (!phoneNumber) {
             return res.status(400).json({ error: 'Phone number is required' });
+        }
+        
+        if (!isBrowserReadyForPairing && !isReady) {
+            return res.status(400).json({ error: 'Server is still booting up the WhatsApp engine. Please wait about 30 seconds and try again.' });
         }
         
         // requestPairingCode requires the phone number without '+' or specific formatting
