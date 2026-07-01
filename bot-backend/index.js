@@ -156,7 +156,7 @@ async function connectToWhatsApp() {
                         return reply('No properties listed on the platform yet.');
                     }
                     let listStr = '*ALL PLATFORM PROPERTIES:*\n\n';
-                    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+                    const frontendUrl = process.env.FRONTEND_URL || 'https://property-crm-bot.vercel.app';
                     props.rows.forEach(p => {
                         listStr += `🔹 *${p.title}* (${p.price})\nAgent: ${p.agent_name} (${p.agent_phone})\nID: ${p.id}\nLink: ${frontendUrl}/preview/${p.id}\n\n`;
                     });
@@ -288,7 +288,7 @@ async function connectToWhatsApp() {
                         return reply('No properties listed on the platform yet.\n\n_(Reply 0 to go back)_');
                     }
                     let listStr = '*AVAILABLE PROPERTIES:*\n\n';
-                    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+                    const frontendUrl = process.env.FRONTEND_URL || 'https://property-crm-bot.vercel.app';
                     props.rows.forEach(p => {
                         listStr += `🔹 *${p.title}* (${p.price})\nLocation: ${p.location}\nLink: ${frontendUrl}/preview/${p.id}\n\n`;
                     });
@@ -323,7 +323,7 @@ async function connectToWhatsApp() {
                     return reply('You have no properties listed yet.');
                 }
                 let listStr = '*Your Properties:*\n\n';
-                const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+                const frontendUrl = process.env.FRONTEND_URL || 'https://property-crm-bot.vercel.app';
                 myPropsRes.rows.forEach(p => {
                     listStr += `🔹 *${p.title}* (${p.price})\nID: ${p.id}\nLink: ${frontendUrl}/preview/${p.id}\n\n`;
                 });
@@ -413,7 +413,7 @@ async function connectToWhatsApp() {
                     newProperty.agentId, newProperty.agentName, newProperty.agentPhone
                 ]);
 
-                const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+                const frontendUrl = process.env.FRONTEND_URL || 'https://property-crm-bot.vercel.app';
                 const previewUrl = `${frontendUrl}/preview/${newProperty.id}`;
                 
                 session.state = 'IDLE';
