@@ -1,7 +1,4 @@
-FROM node:18-slim
-
-# Install build tools and git which might be required for some npm packages (like Baileys dependencies)
-RUN apt-get update && apt-get install -y git python3 build-essential && rm -rf /var/lib/apt/lists/*
+FROM node:18
 
 # Set working directory
 WORKDIR /usr/src/app
