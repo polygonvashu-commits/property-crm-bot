@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { Client: PgClient } = require('pg');
+const QRCode = require('qrcode');
 
 const app = express();
 app.use(cors());
@@ -77,11 +78,17 @@ const client = new Client({
 
 let isReady = false;
 let isBrowserReadyForPairing = false;
+let latestQR = null;
 
-client.on('qr', (qr) => {
+client.on('qr', async (qr) => {
     isReady = false;
     isBrowserReadyForPairing = true;
-    console.log('\n[WhatsApp] Waiting for pairing code connection...');
+    console.log('\n[WhatsApp] Waiting for pairing code or QR connection...');
+    try {
+        latestQR = await QRCode.toDataURL(qr);
+    } catch (err) {
+        console.error('Failed to generate QR data URL', err);
+    }
 });
 
 client.on('authenticated', () => {
@@ -449,7 +456,7 @@ app.post('/api/admin/login', (req, res) => {
 });
 
 app.get('/api/admin/status', authMiddleware, (req, res) => {
-    res.json({ ready: isReady });
+    res.json({ ready: isReady, qr: latestQR });
 });
 
 app.post('/api/admin/pairing-code', authMiddleware, async (req, res) => {

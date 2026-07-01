@@ -219,37 +219,50 @@ const AdminDashboard = () => {
                 <p style={{ color: '#a7f3d0' }}>The WhatsApp bot is actively receiving and processing messages.</p>
               </div>
             ) : (
-              <div style={{ padding: '2rem', background: '#f9fafb', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-                <h3 style={{ marginBottom: '1rem' }}>Connect using Phone Number</h3>
-                <p style={{ marginBottom: '1.5rem', color: '#4b5563' }}>
-                  Enter the phone number of the device you want the bot to run on (include country code, e.g., +91).
-                </p>
-                <div style={{ display: 'flex', gap: '1rem', maxWidth: '400px', margin: '0 auto', marginBottom: '2rem' }}>
-                  <input
-                    type="text"
-                    placeholder="Type number here (e.g. +91...)"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    style={{ flex: 1, padding: '1rem', borderRadius: '8px', border: '3px solid #000', background: '#e5e7eb', color: '#000', fontSize: '1.1rem', fontWeight: 'bold', minWidth: '250px' }}
-                  />
-                  <button className="btn btn-primary" onClick={requestPairingCode} disabled={requestingCode}>
-                    {requestingCode ? 'Requesting...' : 'Get Code'}
-                  </button>
-                </div>
-                
-                {pairingCode && (
-                  <div style={{ padding: '2rem', background: 'white', display: 'inline-block', borderRadius: '16px', marginBottom: '1rem' }}>
-                    <h1 style={{ color: '#000', fontSize: '3rem', letterSpacing: '0.2em', margin: 0 }}>
-                      {pairingCode}
-                    </h1>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', justifyContent: 'center' }}>
+                {/* QR Code Section */}
+                {botStatus.qr && (
+                  <div style={{ padding: '2rem', background: '#f9fafb', borderRadius: '12px', border: '1px solid #e5e7eb', flex: '1 1 300px' }}>
+                    <h3 style={{ marginBottom: '1rem' }}>Option 1: Scan QR Code</h3>
+                    <div style={{ background: 'white', padding: '1rem', display: 'inline-block', borderRadius: '12px', marginBottom: '1rem' }}>
+                      <img src={botStatus.qr} alt="Scan QR" style={{ width: '220px', height: '220px' }} />
+                    </div>
+                    <p style={{ color: '#4b5563', fontSize: '0.9rem' }}>Open WhatsApp &gt; Linked Devices &gt; Link a Device</p>
                   </div>
                 )}
-                
-                {pairingCode && (
-                  <p style={{ color: '#d1d5db', maxWidth: '400px', margin: '0 auto' }}>
-                    Open WhatsApp on your phone &gt; Linked Devices &gt; Link a Device &gt; Link with phone number instead. Enter the code above.
+
+                {/* Phone Pairing Section */}
+                <div style={{ padding: '2rem', background: '#f9fafb', borderRadius: '12px', border: '1px solid #e5e7eb', flex: '1 1 300px' }}>
+                  <h3 style={{ marginBottom: '1rem' }}>Option 2: Phone Number</h3>
+                  <p style={{ marginBottom: '1.5rem', color: '#4b5563', fontSize: '0.9rem' }}>
+                    Enter your phone number (e.g. 919876543210) to get an 8-character pairing code.
                   </p>
-                )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+                    <input
+                      type="text"
+                      placeholder="919876543210"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      style={{ padding: '0.75rem', borderRadius: '8px', border: '2px solid #000', background: 'white', color: '#000', fontSize: '1rem', fontWeight: 'bold' }}
+                    />
+                    <button className="btn btn-primary" onClick={requestPairingCode} disabled={requestingCode} style={{ padding: '0.75rem' }}>
+                      {requestingCode ? 'Requesting...' : 'Get Pairing Code'}
+                    </button>
+                  </div>
+                  
+                  {pairingCode && (
+                    <div>
+                      <div style={{ padding: '1rem', background: 'white', display: 'inline-block', borderRadius: '12px', marginBottom: '1rem', border: '2px dashed #10b981' }}>
+                        <h1 style={{ color: '#000', fontSize: '2.5rem', letterSpacing: '0.2em', margin: 0 }}>
+                          {pairingCode}
+                        </h1>
+                      </div>
+                      <p style={{ color: '#4b5563', fontSize: '0.9rem' }}>
+                        Open WhatsApp &gt; Linked Devices &gt; Link with phone number instead. Enter the code above.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
